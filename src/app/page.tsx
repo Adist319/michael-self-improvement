@@ -1,101 +1,219 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+
+interface DailyDeed {
+  date: string;
+  deed: string;
+  emoji: string;
+}
+
+const EMOJI_OPTIONS = ['😊', '💪', '🌟', '🎯', '🚀', '💡', '🌱', '💭'];
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [streak, setStreak] = useState(0);
+  const [lastCheckIn, setLastCheckIn] = useState<string | null>(null);
+  const [currentDeed, setCurrentDeed] = useState('');
+  const [selectedEmoji, setSelectedEmoji] = useState('😊');
+  const [deeds, setDeeds] = useState<DailyDeed[]>([]);
+  const [isDownBad, setIsDownBad] = useState(true);
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    // Load data from localStorage
+    const savedStreak = localStorage.getItem('streak');
+    const savedLastCheckIn = localStorage.getItem('lastCheckIn');
+    const savedDeeds = localStorage.getItem('deeds');
+    const savedIsDownBad = localStorage.getItem('isDownBad');
+    
+    if (savedStreak) setStreak(parseInt(savedStreak));
+    if (savedLastCheckIn) setLastCheckIn(savedLastCheckIn);
+    if (savedDeeds) setDeeds(JSON.parse(savedDeeds));
+    if (savedIsDownBad) setIsDownBad(JSON.parse(savedIsDownBad));
+  }, []);
+
+  const handleGoodDeed = () => {
+    if (!currentDeed.trim()) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const newDeed: DailyDeed = {
+      date: today,
+      deed: currentDeed,
+      emoji: selectedEmoji
+    };
+
+    const newDeeds = [...deeds, newDeed];
+    setDeeds(newDeeds);
+    localStorage.setItem('deeds', JSON.stringify(newDeeds));
+
+    // Update streak
+    const newStreak = lastCheckIn === 
+      new Date(Date.now() - 86400000).toISOString().split('T')[0] 
+      ? streak + 1 
+      : 1;
+    
+    setStreak(newStreak);
+    setLastCheckIn(today);
+    setCurrentDeed('');
+    setIsDownBad(false);
+    setShowEmojiPicker(false);
+    
+    localStorage.setItem('streak', newStreak.toString());
+    localStorage.setItem('lastCheckIn', today);
+    localStorage.setItem('isDownBad', 'false');
+  };
+
+  const getMotivationalMessage = () => {
+    if (isDownBad) {
+      return "Time to turn that L into a W. What's one good thing you did today?";
+    }
+    return streak > 1 
+      ? `${streak} days of W energy! Keep it going!` 
+      : "First W of many! What's your good deed for today?";
+  };
+
+  const isDateCompleted = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0];
+    return deeds.some(deed => deed.date === dateString);
+  };
+
+  const getSelectedDateDeed = () => {
+    if (!date) return null;
+    const dateString = date.toISOString().split('T')[0];
+    return deeds.find(deed => deed.date === dateString);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[conic-gradient(at_top,_var(--tw-gradient-stops))] from-slate-900 via-purple-900 to-slate-900">
+      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-20 mix-blend-soft-light pointer-events-none"></div>
+      <main className="w-full max-w-3xl space-y-8 relative">
+        <div className="text-center space-y-6">
+          <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent drop-shadow-lg">
+            Michael's Recovery Arc
+          </h1>
+          
+          <div className={`text-2xl font-medium transition-colors drop-shadow-lg ${
+            isDownBad ? 'text-red-400' : 'text-green-400'
+          }`}>
+            {getMotivationalMessage()}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Input and Recent W's Section */}
+            <div className="bg-white/10 backdrop-blur-xl rounded-xl p-6 space-y-4 border border-white/10 shadow-lg">
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="w-12 h-12 flex items-center justify-center text-2xl bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    {selectedEmoji}
+                  </button>
+                  <Input
+                    type="text"
+                    placeholder="Enter your good deed..."
+                    value={currentDeed}
+                    onChange={(e) => setCurrentDeed(e.target.value)}
+                    className="bg-white/5 border-white/10 placeholder:text-white/50 text-white"
+                    onKeyPress={(e) => e.key === 'Enter' && handleGoodDeed()}
+                  />
+                </div>
+                
+                {showEmojiPicker && (
+                  <div className="flex gap-2 p-2 bg-white/5 rounded-lg">
+                    {EMOJI_OPTIONS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => {
+                          setSelectedEmoji(emoji);
+                          setShowEmojiPicker(false);
+                        }}
+                        className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded transition-colors"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleGoodDeed}
+                  className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 hover:from-blue-600 hover:via-purple-600 hover:to-blue-600 border-0"
+                >
+                  Add W
+                </Button>
+              </div>
+
+              {deeds.length > 0 && (
+                <div className="mt-6">
+                  <h2 className="text-xl font-semibold mb-3">Recent W's:</h2>
+                  <div className="space-y-2">
+                    {deeds.slice(-3).reverse().map((deed, index) => (
+                      <div key={index} className="bg-white/5 p-4 rounded-lg border border-white/5 hover:bg-white/10 transition-colors group">
+                        <div className="flex items-start gap-3">
+                          <div className="text-2xl group-hover:scale-110 transition-transform">
+                            {deed.emoji}
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm text-white/60">{new Date(deed.date).toLocaleDateString()}</div>
+                            <div>{deed.deed}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {streak > 0 && (
+                <div className="text-xl font-medium mt-4 bg-white/5 p-4 rounded-lg border border-white/10">
+                  🔥 {streak} Day{streak !== 1 ? 's' : ''} Streak
+                </div>
+              )}
+            </div>
+
+            {/* Calendar Section */}
+            <div className="bg-white/10 backdrop-blur-xl rounded-xl p-6 border border-white/10 shadow-lg">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                modifiers={{
+                  completed: (date) => isDateCompleted(date),
+                }}
+                modifiersStyles={{
+                  completed: {
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    color: 'white',
+                    borderColor: 'rgba(34, 197, 94, 0.5)',
+                  }
+                }}
+                className="rounded-md border-0 bg-transparent text-white [&_.rdp-day]:hover:bg-white/10 [&_.rdp-day_button]:transition-colors"
+              />
+              
+              {getSelectedDateDeed() && (
+                <div className="mt-4 p-4 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="text-2xl">
+                      {getSelectedDateDeed()?.emoji}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm text-white/60">
+                        {date?.toLocaleDateString()}
+                      </div>
+                      <div>{getSelectedDateDeed()?.deed}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
